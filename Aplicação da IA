@@ -1,0 +1,226 @@
+import random
+import time
+
+# --- Variáveis Globais ---
+tabuleiro = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+jogador_atual = 'X' # Começa com o jogador X (humano)
+jogo_terminou = False # Controle para o loop
+
+# --- Funções de Exibição e Jogada Humana ---
+def mostrar_tabuleiro():
+    """
+    Exibe o estado atual do tabuleiro do Jogo da Velha.
+    Cada posição é mostrada, com linhas separadoras para melhor visualização.
+    """
+    print(f"\n{tabuleiro[0]} | {tabuleiro[1]} | {tabuleiro[2]}")
+    print("---------")
+    print(f"{tabuleiro[3]} | {tabuleiro[4]} | {tabuleiro[5]}")
+    print("---------")
+    print(f"{tabuleiro[6]} | {tabuleiro[7]} | {tabuleiro[8]}\n")
+
+def fazer_jogada():
+    """
+    Solicita ao jogador humano que escolha uma posição para fazer sua jogada.
+    Valida a entrada do usuário e atualiza o tabuleiro com o símbolo do jogador.
+    Continua pedindo entrada até que uma posição válida e vazia seja escolhida.
+    """
+    global jogador_atual 
+    
+    posicao_valida = False
+    while not posicao_valida:
+        try:
+            jogada = int(input(f"Jogador {jogador_atual}, escolha uma posição (1-9): "))
+            index_jogada = jogada - 1 
+
+            if 0 <= index_jogada <= 8:
+                if tabuleiro[index_jogada] not in ["X", "O"]:
+                    tabuleiro[index_jogada] = jogador_atual # Atualiza o tabuleiro
+                    posicao_valida = True 
+                else:
+                    print("Essa posição já está ocupada. Escolha outra.")
+            else:
+                print("Posição inválida. Por favor, escolha um número entre 1 e 9.")
+        except ValueError:
+            print("Entrada inválida. Por favor, digite um número.")
+
+# --- Funções de Lógica do Jogo ---
+def _checar_linha(jogador, condicao):
+    """
+    Função auxiliar para a IA.
+    Verifica se ao preencher uma das posições da 'condicao' com o 'jogador'
+    resulta em uma vitória para esse 'jogador'.
+    Retorna o índice da posição que completaria a linha, ou -1 se não houver.
+    """
+    vazias_na_linha = []
+    marcas_do_jogador = 0
+
+    for i in condicao:
+        if tabuleiro[i] == jogador:
+            marcas_do_jogador += 1
+        elif tabuleiro[i] not in ['X', 'O']: # É uma casa vazia
+            vazias_na_linha.append(i)
+    
+    # Se há duas marcas do jogador e uma posição vazia, então pode completar
+    if marcas_do_jogador == 2 and len(vazias_na_linha) == 1:
+        return vazias_na_linha[0]
+    return -1
+
+def jogada_computador():
+    """
+    Simula a jogada do computador com uma IA mais inteligente (prioridades).
+    A IA joga como 'O'. Prioridades:
+    1. Ganhar (se puder fazer 3 em linha)
+    2. Bloquear o jogador humano (impedir 3 em linha de 'X')
+    3. Ocupar o centro
+    4. Ocupar um canto
+    5. Ocupar qualquer outra posição vazia aleatoriamente
+    """
+    global tabuleiro
+    
+    condicoes_vitoria = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], # Linhas
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], # Colunas
+        [0, 4, 8], [2, 4, 6]             # Diagonais
+    ]
+
+    # --- 1. Checar se o computador pode GANHAR ---
+    for condicao in condicoes_vitoria:
+        pos_para_ganhar = _checar_linha('O', condicao)
+        if pos_para_ganhar != -1:
+            tabuleiro[pos_para_ganhar] = 'O'
+            print(f"O computador jogou na posição {pos_para_ganhar + 1} (ganhou!).")
+            return
+
+    # --- 2. Checar se precisa BLOQUEAR o jogador humano ('X') ---
+    for condicao in condicoes_vitoria:
+        pos_para_bloquear = _checar_linha('X', condicao)
+        if pos_para_bloquear != -1:
+            tabuleiro[pos_para_bloquear] = 'O'
+            print(f"O computador jogou na posição {pos_para_bloquear + 1} (bloqueou!).")
+            return
+
+    # --- 3. Tentar o CENTRO ---
+    if tabuleiro[4] not in ["X", "O"]:
+        tabuleiro[4] = 'O'
+        print("O computador jogou na posição 5 (centro).")
+        return
+
+    # --- 4. Tentar os CANTOS ---
+    cantos = [0, 2, 6, 8]
+    random.shuffle(cantos) # Mistura os cantos para não ter sempre a mesma preferência
+    for canto_idx in cantos:
+        if tabuleiro[canto_idx] not in ["X", "O"]:
+            tabuleiro[canto_idx] = 'O'
+            print(f"O computador jogou na posição {canto_idx + 1} (canto).")
+            return
+
+    # --- 5. Tentar QUALQUER OUTRA POSIÇÃO VAZIA (fallback) ---
+    posicoes_vazias = []
+    for i, casa in enumerate(tabuleiro):
+        if casa not in ["X", "O"]: 
+            posicoes_vazias.append(i)
+
+    if posicoes_vazias:
+        escolha_computador = random.choice(posicoes_vazias)
+        tabuleiro[escolha_computador] = 'O'
+        print(f"O computador jogou na posição {escolha_computador + 1} (aleatória).")
+    else:
+        print("Nenhuma posição vazia encontrada para o computador jogar.")
+
+
+def verificar_vitoria():
+    """
+    Verifica se há um vencedor no tabuleiro atual.
+    Verifica todas as linhas, colunas e diagonais em busca de três símbolos iguais.
+
+    Retorna:
+        bool: True se um jogador venceu, False caso contrário.
+    """
+    condicoes_vitoria = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], # Linhas
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], # Colunas
+        [0, 4, 8], [2, 4, 6]             # Diagonais
+    ]
+
+    for condicao in condicoes_vitoria:
+        val1 = tabuleiro[condicao[0]]
+        val2 = tabuleiro[condicao[1]]
+        val3 = tabuleiro[condicao[2]]
+
+        if val1 == val2 == val3 and (val1 == 'X' or val1 == 'O'):
+            return True
+            
+    return False
+
+def verificar_empate():
+    """
+    Verifica se o jogo terminou em empate (todas as casas preenchidas e sem vencedor).
+
+    Retorna:
+        bool: True se o jogo empatou, False caso contrário.
+    """
+    for casa in tabuleiro:
+        if casa not in ['X', 'O']:
+            return False # Há casas vazias
+    return True # Todas preenchidas
+
+def alternar_jogador():
+    """
+    Troca o jogador atual de 'X' para 'O' ou de 'O' para 'X'.
+    """
+    global jogador_atual
+    if jogador_atual == 'X':
+        jogador_atual = 'O'
+    else:
+        jogador_atual = 'X'
+
+# --- Loop principal do jogo ---
+if __name__ == "__main__":
+    """
+    Função principal que gerencia o fluxo do Jogo da Velha,
+    permitindo múltiplos jogos e o controle do turno dos jogadores,
+    vitória e empate.
+    """
+    while True: # Loop externo para permitir múltiplos jogos
+        # Resetar o estado do jogo para um novo início
+        tabuleiro = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+        jogador_atual = 'X' # Sempre começa com o humano
+        jogo_terminou = False
+        
+        print("\n--- JOGO DA VELHA: VOCÊ (X) vs COMPUTADOR (O) ---")
+
+        while not jogo_terminou:
+            mostrar_tabuleiro()
+
+            # Guarda quem é o jogador que está fazendo a jogada AGORA
+            # Importante: esta variável NÃO SERÁ ALTERADA antes da verificação de vitória/empate
+            jogador_da_rodada = jogador_atual 
+
+            if jogador_da_rodada == 'X':
+                fazer_jogada()
+            else: 
+                print("Vez do Computador...")
+                time.sleep(1) # Simular IA pensando
+                jogada_computador()
+            
+            # --- VERIFICAÇÕES APÓS A JOGADA ---
+            if verificar_vitoria():
+                mostrar_tabuleiro()
+                # O vencedor é o jogador que estava ativo na "rodada"
+                print(f"Parabéns, Jogador {jogador_da_rodada} venceu!") 
+                jogo_terminou = True
+                
+            elif verificar_empate():
+                mostrar_tabuleiro()
+                print("Fim de jogo! Deu Velha (Empate)!")
+                jogo_terminou = True
+            else:
+                # SOMENTE ALTERNA O JOGADOR SE O JOGO NÃO TERMINOU
+                alternar_jogador()
+
+        # Perguntar ao usuário se ele quer jogar novamente
+        jogar_novamente = input("Quer jogar novamente? (s/n): ").lower()
+        if jogar_novamente != 's':
+            break # Sai do loop principal se a resposta não for 's'
+
+    print("\nObrigado por jogar!")
