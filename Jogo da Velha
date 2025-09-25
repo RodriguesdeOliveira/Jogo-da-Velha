@@ -1,0 +1,126 @@
+tabuleiro = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+jogador_atual = 'X' # Começa com o jogador X
+jogo_terminou = False # Controle para o loop
+
+def mostrar_tabuleiro():
+    """
+    Exibe o estado atual do tabuleiro do Jogo da Velha.
+    Cada posição é mostrada, com linhas separadoras para melhor visualização.
+    """
+    print(f"\n{tabuleiro[0]} | {tabuleiro[1]} | {tabuleiro[2]}")
+    print("---------")
+    print(f"{tabuleiro[3]} | {tabuleiro[4]} | {tabuleiro[5]}")
+    print("---------")
+    print(f"{tabuleiro[6]} | {tabuleiro[7]} | {tabuleiro[8]}\n")
+
+def fazer_jogada():
+    """
+    Solicita ao jogador atual que escolha uma posição para fazer sua jogada.
+    Valida a entrada do usuário e atualiza o tabuleiro com o símbolo do jogador.
+    Continua pedindo entrada até que uma posição válida e vazia seja escolhida.
+    """
+    global jogador_atual # 'global' permite modificar a variável na função
+    
+    posicao_valida = False
+    while not posicao_valida: # Loop para garantir posição válida
+        try:
+            jogada = int(input(f"Jogador {jogador_atual}, escolha uma posição (1-9): "))
+            index_jogada = jogada - 1  # Ajusta para (0 a 8) e assim por diante
+
+            if 0 <= index_jogada <= 8:
+                if tabuleiro[index_jogada] not in ["X", "O"]: # casa ocupada por X ou O
+                    tabuleiro[index_jogada] = jogador_atual # Atualiza o tabuleiro
+                    posicao_valida = True 
+                else:
+                    print("Essa posição já está ocupada. Escolha outra.")
+            else:
+                print("Posição inválida. Por favor, escolha um número entre 1 e 9.")
+        except ValueError:
+            print("Entrada inválida. Por favor, digite um número.")
+
+def verificar_vitoria():
+    """
+    Verifica se há um vencedor no tabuleiro atual.
+    Verifica todas as linhas, colunas e diagonais em busca de três símbolos iguais.
+
+    Retorna:
+        bool: True se um jogador venceu, False caso contrário.
+    """
+    condicoes_vitoria = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], # Linhas
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], # Colunas
+        [0, 4, 8], [2, 4, 6]             # Diagonais
+    ]
+
+    for condicao in condicoes_vitoria:
+        val1 = tabuleiro[condicao[0]]
+        val2 = tabuleiro[condicao[1]]
+        val3 = tabuleiro[condicao[2]]
+
+        if val1 == val2 == val3 and (val1 == 'X' or val1 == 'O'):
+            return True
+            
+    return False
+
+def verificar_empate():
+    """
+    Verifica se o jogo terminou em empate (todas as casas preenchidas e sem vencedor).
+
+    Retorna:
+        bool: True se o jogo empatou, False caso contrário.
+    """
+    for casa in tabuleiro:
+        if casa not in ['X', 'O']:
+            return False # Há casas vazias
+    return True # Todas preenchidas
+
+def alternar_jogador():
+    """
+    Troca o jogador atual de 'X' para 'O' ou de 'O' para 'X'.
+    """
+    global jogador_atual
+    if jogador_atual == 'X':
+        jogador_atual = 'O'
+    else:
+        jogador_atual = 'X'
+
+# --- Loop principal do jogo ---
+if __name__ == "__main__": # Bloco para garantir que o código só rode se o arquivo for executado diretamente
+    """
+    Função principal que gerencia o fluxo do Jogo da Velha,
+    permitindo múltiplos jogos e o controle do turno dos jogadores,
+    vitória e empate.
+    """
+    while True: # Loop externo para permitir múltiplos jogos
+        # Resetar o estado do jogo para um novo início
+        tabuleiro = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+        jogador_atual = 'X'
+        jogo_terminou = False
+        
+        print("\n--- NOVO JOGO ---")
+
+        while not jogo_terminou:
+            mostrar_tabuleiro()
+            fazer_jogada() 
+            
+            if verificar_vitoria():
+                mostrar_tabuleiro()
+                # O jogador que fez a jogada e venceu é o que NÃO é o jogador_atual AGORA.
+                vencedor = 'O' if jogador_atual == 'X' else 'X'
+                print(f"Parabéns, Jogador {vencedor} venceu!")
+                jogo_terminou = True
+
+            elif verificar_empate():
+                mostrar_tabuleiro()
+                print("Fim de jogo! Deu Velha (Empate)!")
+                jogo_terminou = True
+            else:
+                # Troca o jogador apenas se o jogo não terminou
+                alternar_jogador()
+
+        # Perguntar ao usuário se ele quer jogar novamente
+        jogar_novamente = input("Quer jogar novamente? (s/n): ").lower()
+        if jogar_novamente != 's':
+            break # Sai do loop principal se a resposta não for 's'
+
+    print("\nObrigado por jogar!")
