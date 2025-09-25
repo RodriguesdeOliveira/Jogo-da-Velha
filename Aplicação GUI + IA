@@ -1,0 +1,238 @@
+import tkinter as tk
+from tkinter import messagebox
+import random
+import time
+
+# --- Variáveis Globais ---
+tabuleiro = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+jogador_atual = 'X'
+jogo_terminou = False 
+botoes = [] # armazenar referências do Tkinter
+root = None # Janela principal Tkinter
+
+# --- Funções de Lógica do Jogo para IA---
+def _checar_linha(jogador, condicao):
+    """
+    Verifica se ao preencher uma das posições, resulta em uma vitória para esse 'jogador'.
+    Retorna o índice da posição que completaria a linha, ou -1 se não houver.
+    """
+    vazias_na_linha = []
+    marcas_do_jogador = 0
+
+    for i in condicao:
+        if tabuleiro[i] == jogador:
+            marcas_do_jogador += 1
+        elif tabuleiro[i] not in ['X', 'O']: # É uma casa vazia
+            vazias_na_linha.append(i)
+    
+    # Se há duas marcas do jogador e uma posição vazia, então pode completar
+    if marcas_do_jogador == 2 and len(vazias_na_linha) == 1:
+        return vazias_na_linha[0]
+    return -1
+
+# --- Funções de Verificação de Estado do Jogo ---
+def verificar_vitoria():
+    """
+    Verifica todas as linhas, colunas e diagonais em busca de três símbolos iguais.
+    Retorna: bool: True se um jogador venceu, False caso contrário.
+    """
+    condicoes_vitoria = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], # Linhas
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], # Colunas
+        [0, 4, 8], [2, 4, 6]             # Diagonais
+    ]
+
+    for condicao in condicoes_vitoria:
+        val1 = tabuleiro[condicao[0]]
+        val2 = tabuleiro[condicao[1]]
+        val3 = tabuleiro[condicao[2]]
+
+        if val1 == val2 == val3 and (val1 == 'X' or val1 == 'O'):
+            return True
+    return False
+
+def verificar_empate():
+    """
+    Verifica se o jogo terminou em empate (todas as casas preenchidas e sem vencedor).
+    Retorna: bool: True se o jogo empatou, False caso contrário.
+    """
+    for casa in tabuleiro:
+        if casa not in ['X', 'O']:
+            return False # Há casas vazias
+    return True # Todas preenchidas
+
+def alternar_jogador():
+    """
+    Troca o jogador atual de 'X' para 'O' ou de 'O' para 'X'.
+    """
+    global jogador_atual
+    if jogador_atual == 'X':
+        jogador_atual = 'O'
+    else:
+        jogador_atual = 'X'
+
+# --- Funções de Controle da GUI ---
+def desabilitar_botoes():
+    """Desabilita todos os botões do tabuleiro para impedir novas jogadas."""
+    for btn in botoes:
+        btn.config(state=tk.DISABLED) # state=tk.DISABLED torna o botão inativo
+
+def habilitar_botoes():
+    """Habilita todos os botões do tabuleiro."""
+    for btn in botoes:
+        btn.config(state=tk.NORMAL) # state=tk.NORMAL torna o botão ativo
+
+def reiniciar_jogo_gui():
+    """
+    Reinicia o estado do jogo para um novo começo na GUI.
+    Chamada pelo botão 'Reiniciar Jogo'.
+    """
+    global tabuleiro, jogador_atual, jogo_terminou
+
+    # 1. Resetar o estado interno do jogo
+    tabuleiro = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+    jogador_atual = 'X'
+    jogo_terminou = False
+
+    # 2. Resetar a aparência dos botões na GUI
+    for i in range(9):
+        botoes[i].config(text="", state=tk.NORMAL, fg="black") # Limpa o texto, habilita e reseta a cor
+      
+    print("\n--- NOVO JOGO ---") # print para console
+
+def jogada_computador_gui():
+    """
+    Simula a jogada do computador com a IA inteligente para a GUI.
+    """
+    global tabuleiro, jogador_atual, jogo_terminou
+    
+    condicoes_vitoria = [ # Condições de vitória repetidas, mas específicas para a IA
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], # Linhas
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], # Colunas
+        [0, 4, 8], [2, 4, 6]             # Diagonais
+    ]
+
+    pos_jogada = -1 # Variável para armazenar a posição que a IA vai jogar
+
+    # --- 1. Checar se o computador pode GANHAR ('O') ---
+    for condicao in condicoes_vitoria:
+        pos_para_ganhar = _checar_linha('O', condicao)
+        if pos_para_ganhar != -1:
+            pos_jogada = pos_para_ganhar
+            break # Encontrou uma jogada vencedora, sai do loop
+
+    # --- 2. Checar se precisa BLOQUEAR o jogador humano ('X') ---
+    if pos_jogada == -1: # Só verifica se não encontrou jogada para ganhar
+        for condicao in condicoes_vitoria:
+            pos_para_bloquear = _checar_linha('X', condicao)
+            if pos_para_bloquear != -1:
+                pos_jogada = pos_para_bloquear
+                break # Encontrou uma jogada para bloquear, sai do loop
+
+    # --- 3. Tentar o CENTRO ---
+    if pos_jogada == -1 and tabuleiro[4] not in ["X", "O"]:
+        pos_jogada = 4
+
+    # --- 4. Tentar os CANTOS ---
+    if pos_jogada == -1:
+        cantos = [0, 2, 6, 8]
+        random.shuffle(cantos)
+        for canto_idx in cantos:
+            if tabuleiro[canto_idx] not in ["X", "O"]:
+                pos_jogada = canto_idx
+                break
+
+    # --- 5. Tentar QUALQUER OUTRA POSIÇÃO VAZIA (fallback) ---
+    if pos_jogada == -1:
+        posicoes_vazias = []
+        for i, casa in enumerate(tabuleiro):
+            if casa not in ["X", "O"]: 
+                posicoes_vazias.append(i)
+        
+        if posicoes_vazias:
+            pos_jogada = random.choice(posicoes_vazias)
+        # else: este caso é uma borda rara, já que verificar_empate() deveria pegar
+
+    # Executa a jogada da IA no tabuleiro interno e na GUI
+    if pos_jogada != -1: # Garante que uma posição foi encontrada
+        tabuleiro[pos_jogada] = 'O'
+        botoes[pos_jogada].config(text='O', fg='blue')
+    
+    # Após a jogada da IA, verifica o estado do jogo
+    if verificar_vitoria():
+        messagebox.showinfo('Fim de Jogo', 'Tente outra vez.')
+        jogo_terminou = True
+        desabilitar_botoes()
+    elif verificar_empate():
+        messagebox.showinfo('Fim de Jogo', 'Deu Velha (Empate)!')
+        jogo_terminou = True
+        desabilitar_botoes()
+    else:
+        alternar_jogador() # Troca para o jogador humano
+        habilitar_botoes() # Re-habilita os botões após a jogada da IA
+
+def clique_botao(index):
+    """
+    Lida com o clique de um botão do tabuleiro na GUI.
+    Processa a jogada do jogador humano e, se necessário, chama a IA.
+    """
+    global tabuleiro, jogador_atual, jogo_terminou, root
+
+    # Ação se o jogo não terminou e a posição está vazia
+    if not jogo_terminou and tabuleiro[index] not in ["X", "O"]:
+        tabuleiro[index] = jogador_atual # Atualiza o tabuleiro INTERNO
+        botoes[index].config(text=jogador_atual) # TEXTO do botão na GUI
+
+        if jogador_atual == 'X':
+            botoes[index].config(fg="red") # cor do X
+        else:
+            botoes[index].config(fg="blue") # cor do O
+
+        # --- VERIFICAÇÕES APÓS A JOGADA DO HUMANO ---
+        if verificar_vitoria():
+            messagebox.showinfo("Fim de Jogo", f"Parabéns, Jogador {jogador_atual} venceu!")
+            jogo_terminou = True
+            desabilitar_botoes() # Desabilita os botões para impedir novas jogadas
+        elif verificar_empate():
+            messagebox.showinfo('Fim de Jogo', 'Deu Velha (Empate)!')
+            jogo_terminou = True
+            desabilitar_botoes()
+        else:
+            alternar_jogador() 
+
+            if jogador_atual == 'O' and not jogo_terminou: # Impede que a GUI "congele"
+                desabilitar_botoes() # Enquanto a IA pensa
+                root.after(1000, jogada_computador_gui) # Chama IA após 1 segundo
+
+# --- Configuração da GUI ---
+def configurar_gui():
+    global root # janela principal
+    global botoes
+
+    root = tk.Tk() # cria janela
+    root.title('Jogo da Velha') # titulo janela
+    root.geometry('400x470') # tamanho (larguraXaltura)
+    root.resizable(False, False) # não deixa mudar o tamanho da janela
+
+    # --- Frame para o Tabuleiro ---
+    frame_tabuleiro = tk.Frame(root, bg="#FFFFFF", bd=5, relief='ridge') # fundo, borda, estilo
+    frame_tabuleiro.pack(pady=10) # Empacota o frame na janela com espaço (margem)
+
+    # --- Criar os Botões do Tabuleiro ---
+    for i in range(9):
+        btn = tk.Button(frame_tabuleiro, text="", font=('Arial', 40, 'bold'),
+                        width=3, height=1, command=lambda i=i: clique_botao(i))
+        row = i // 3 
+        col = i % 3
+        btn.grid(row=row, column=col, padx=5, pady=5)
+        botoes.append(btn) # Adiciona o botão à lista
+
+    btn_reiniciar = tk.Button(root, text="Reiniciar Jogo", font=('Arial', 14),
+                            command=reiniciar_jogo_gui, bg="#AEBCDB", fg="black")
+    btn_reiniciar.pack(side=tk.BOTTOM, pady=10)
+
+    root.mainloop() 
+
+# --- Execução do Jogo ---
+if __name__ == "__main__":
+    configurar_gui()
